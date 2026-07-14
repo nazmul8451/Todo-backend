@@ -102,3 +102,24 @@ def delete_todo(
     db.delete(db_todo)
     db.commit()
     return
+
+
+@router.post("/{todo_id}/suggest-subtasks", response_model=List[str])
+def suggest_subtasks(
+    todo_id: int,
+    current_user: models.User = Depends(security.get_current_user),
+    db: Session = Depends(get_db)
+):
+    db_todo = db.query(models.Todo).filter(
+        models.Todo.id == todo_id, 
+        models.Todo.owner_id == current_user.id
+    ).first()
+    
+    if not db_todo:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Todo not found"
+        )
+        
+    from app import ai_service
+    return ai_service.generate_subtasks(db_todo.title, db_todo.description)
